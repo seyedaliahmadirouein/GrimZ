@@ -54,9 +54,10 @@ import org.jetbrains.annotations.NotNull;
 
 public class MovementCheckRunner extends GrimProcessor {
     // Averaged over 500 predictions (Defaults set slightly above my 3600x results)
-    public static double predictionNanos = 0.3 * 1e6;
+    // volatile: written on player netty threads, read by the /grim perf command thread.
+    public volatile static double predictionNanos = 0.3 * 1e6;
     // Averaged over 20000 predictions
-    public static double longPredictionNanos = 0.3 * 1e6;
+    public volatile static double longPredictionNanos = 0.3 * 1e6;
     private boolean allowSprintJumpingWithElytra = true;
 
     public MovementCheckRunner(GrimPlayer player) {

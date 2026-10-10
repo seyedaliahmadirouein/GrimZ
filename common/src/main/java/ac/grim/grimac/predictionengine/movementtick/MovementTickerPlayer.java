@@ -29,6 +29,6 @@ public class MovementTickerPlayer extends MovementTicker {
 
     @Override
     public void doNormalMove(float blockFriction) {
-        new PredictionEngineNormal().guessBestMovement(BlockProperties.getFrictionInfluencedSpeed(blockFriction, player), player);
+        PredictionEngineNormal.INSTANCE.guessBestMovement(BlockProperties.getFrictionInfluencedSpeed(blockFriction, player), player);
     }
 }

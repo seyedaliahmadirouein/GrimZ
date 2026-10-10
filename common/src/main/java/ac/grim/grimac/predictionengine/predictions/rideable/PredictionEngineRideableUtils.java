@@ -93,7 +93,7 @@ public final class PredictionEngineRideableUtils {
         }
         result.stuckSpeedMultiplier = stuckSpeedMultiplier == null ? StuckSpeed.NONE : stuckSpeedMultiplier;
 
-        result = result.returnNewModified(new PredictionEngineNormal().handleOnClimbable(result.vector.clone(), player), VectorData.VectorType.Climbable);
+        result = result.returnNewModified(PredictionEngineNormal.INSTANCE.handleOnClimbable(result.vector.clone(), player), VectorData.VectorType.Climbable);
         returnVectors.add(result);
     }
 

@@ -58,10 +58,11 @@ public class DynamicHitboxFence extends DynamicConnecting implements HitBoxFacto
             south = block.getSouth() != South.FALSE;
             west = block.getWest() != West.FALSE;
         } else {
-            east = connectsTo(player, version, x, y, z, BlockFace.EAST);
-            north = connectsTo(player, version, x, y, z, BlockFace.NORTH);
-            south = connectsTo(player, version, x, y, z, BlockFace.SOUTH);
-            west = connectsTo(player, version, x, y, z, BlockFace.WEST);
+            WrappedBlockState currBlock = player.compensatedWorld.getBlock(x, y, z, false);
+            east = connectsTo(player, version, x, y, z, BlockFace.EAST, currBlock);
+            north = connectsTo(player, version, x, y, z, BlockFace.NORTH, currBlock);
+            south = connectsTo(player, version, x, y, z, BlockFace.SOUTH, currBlock);
+            west = connectsTo(player, version, x, y, z, BlockFace.WEST, currBlock);
         }
 
         return version.isNewerThanOrEquals(ClientVersion.V_1_12_2)

@@ -43,10 +43,11 @@ public class DynamicHitboxWall extends DynamicConnecting implements HitBoxFactor
             west = getConnectionValue(state.getWest(), sixteen);
             up = state.isUp() ? 1 : 0;
         } else {
-            north = connectsTo(player, version, x, y, z, BlockFace.NORTH) ? 1 : 0;
-            south = connectsTo(player, version, x, y, z, BlockFace.SOUTH) ? 1 : 0;
-            west = connectsTo(player, version, x, y, z, BlockFace.WEST) ? 1 : 0;
-            east = connectsTo(player, version, x, y, z, BlockFace.EAST) ? 1 : 0;
+            WrappedBlockState currBlock = player.compensatedWorld.getBlock(x, y, z, false);
+            north = connectsTo(player, version, x, y, z, BlockFace.NORTH, currBlock) ? 1 : 0;
+            south = connectsTo(player, version, x, y, z, BlockFace.SOUTH, currBlock) ? 1 : 0;
+            west = connectsTo(player, version, x, y, z, BlockFace.WEST, currBlock) ? 1 : 0;
+            east = connectsTo(player, version, x, y, z, BlockFace.EAST, currBlock) ? 1 : 0;
             up = 1;
         }
 

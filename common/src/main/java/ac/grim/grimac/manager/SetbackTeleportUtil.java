@@ -151,7 +151,7 @@ public class SetbackTeleportUtil extends GrimProcessor implements PostPrediction
         vector.multiply(player.stuckSpeedMultiplier);
 
         // stop 1.8 players from stepping onto 1.25 high blocks, because why not?
-        new PredictionEngine().applyMovementThreshold(player, new HashSet<>(Collections.singletonList(new VectorData(vector, VectorData.VectorType.BestVelPicked))));
+        PredictionEngine.INSTANCE.applyMovementThreshold(player, new HashSet<>(Collections.singletonList(new VectorData(vector, VectorData.VectorType.BestVelPicked))));
     }
 
     private void blockMovementsUntilResync(boolean simulateNextTickPosition, boolean isResync) {

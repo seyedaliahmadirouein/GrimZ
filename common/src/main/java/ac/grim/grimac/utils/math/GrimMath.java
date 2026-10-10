@@ -44,7 +44,9 @@ public class GrimMath {
         double mean = sum / numbers.size();
 
         for (double num : numbers) {
-            standardDeviation += Math.pow(num - mean, 2);
+            // Math.pow(x, 2) is equivalent to x * x but slower; identical result for squaring.
+            double diff = num - mean;
+            standardDeviation += diff * diff;
         }
 
         return Math.sqrt(standardDeviation / numbers.size());

@@ -106,7 +106,8 @@ public final class Collisions {
             }
         }
 
-        List<SimpleCollisionBox> desiredMovementCollisionBoxes = new ArrayList<>();
+        // Presized to avoid repeated array growth for typical player-sized scans (~9-30 boxes).
+        List<SimpleCollisionBox> desiredMovementCollisionBoxes = new ArrayList<>(32);
         getCollisionBoxes(player, grabBoxesBB, desiredMovementCollisionBoxes, false);
 
         double bestInput = Double.MAX_VALUE;
@@ -138,7 +139,7 @@ public final class Collisions {
                         offsetByHorizAndStepBox = offsetByHorizAndStepBox.copy().expandToCoordinate(0.0, -1.0E-5F, 0.0);
                     }
 
-                    final List<SimpleCollisionBox> stepCollisions = new ArrayList<>();
+                    final List<SimpleCollisionBox> stepCollisions = new ArrayList<>(32);
                     getCollisionBoxes(player, offsetByHorizAndStepBox, stepCollisions, false);
                     final float[] stepHeights = collectStepHeights(startingOffsetBox, stepCollisions, (float) stepUpHeight, (float) collisionResult.getY());
 
@@ -458,7 +459,8 @@ public final class Collisions {
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
-                    WrappedBlockState block = player.compensatedWorld.getBlock(x, y, z);
+                    // Read-only use: only getType()/isDrag() are called below.
+                    WrappedBlockState block = player.compensatedWorld.getBlock(x, y, z, false);
                     StateType blockType = block.getType();
 
                     if (blockType.isAir()) {
@@ -507,7 +509,8 @@ public final class Collisions {
         }
 
         if (blockType == StateTypes.BUBBLE_COLUMN && player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_13) && magic) {
-            WrappedBlockState blockAbove = player.compensatedWorld.getBlock(blockX, blockY + 1, blockZ);
+            // Read-only use: only getType() is called on this state.
+            WrappedBlockState blockAbove = player.compensatedWorld.getBlock(blockX, blockY + 1, blockZ, false);
 
             if (player.inVehicle() && player.compensatedEntities.self.getRiding().isBoat) {
                 if (!blockAbove.getType().isAir()) {
@@ -860,7 +863,8 @@ public final class Collisions {
     }
 
     public static boolean onClimbable(GrimPlayer player, double x, double y, double z) {
-        WrappedBlockState blockState = player.compensatedWorld.getBlock(x, y, z);
+        // Read-only use: the state is only queried for type/properties below.
+        WrappedBlockState blockState = player.compensatedWorld.getBlock((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z), false);
         StateType blockMaterial = blockState.getType();
 
         if (player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_21_11) &&

@@ -391,14 +391,18 @@ public class GrimPlayer implements GrimUser {
 
         // Knockback takes precedence over piston pushing in my testing
         // It's very difficult to test precedence so if there's issues with this bouncy implementation let me know
-        for (VectorData data : new HashSet<>(possibleMovements)) {
-            for (BlockFace direction : uncertaintyHandler.slimePistonBounces) {
-                if (direction.getModX() != 0) {
-                    possibleMovements.add(data.returnNewModified(data.vector.clone().setX(direction.getModX()), VectorData.VectorType.SlimePistonBounce));
-                } else if (direction.getModY() != 0) {
-                    possibleMovements.add(data.returnNewModified(data.vector.clone().setY(direction.getModY()), VectorData.VectorType.SlimePistonBounce));
-                } else if (direction.getModZ() != 0) {
-                    possibleMovements.add(data.returnNewModified(data.vector.clone().setZ(direction.getModZ()), VectorData.VectorType.SlimePistonBounce));
+        // The defensive copy is only needed when we actually add bounces while iterating;
+        // when there are none (the common case), iterating directly avoids one set copy per tick.
+        if (!uncertaintyHandler.slimePistonBounces.isEmpty()) {
+            for (VectorData data : new HashSet<>(possibleMovements)) {
+                for (BlockFace direction : uncertaintyHandler.slimePistonBounces) {
+                    if (direction.getModX() != 0) {
+                        possibleMovements.add(data.returnNewModified(data.vector.clone().setX(direction.getModX()), VectorData.VectorType.SlimePistonBounce));
+                    } else if (direction.getModY() != 0) {
+                        possibleMovements.add(data.returnNewModified(data.vector.clone().setY(direction.getModY()), VectorData.VectorType.SlimePistonBounce));
+                    } else if (direction.getModZ() != 0) {
+                        possibleMovements.add(data.returnNewModified(data.vector.clone().setZ(direction.getModZ()), VectorData.VectorType.SlimePistonBounce));
+                    }
                 }
             }
         }
@@ -600,21 +604,46 @@ public class GrimPlayer implements GrimUser {
             couldSkipTick = pointThreeEstimator.determineCanSkipTick(BlockProperties.getFrictionInfluencedSpeed((float) (speed * (isSprinting ? 1.3 : 1)), this), getPossibleVelocitiesMinusKnockback());
         }
 
-        Set<VectorData> knockback = new HashSet<>();
-        if (firstBreadKB != null) knockback.add(new VectorData(firstBreadKB.vector, VectorData.VectorType.Knockback));
-        if (likelyKB != null) knockback.add(new VectorData(likelyKB.vector, VectorData.VectorType.Knockback));
+        boolean kbPointThree;
+        // Common case first: no knockback at all needs no collection allocation.
+        // Zero vectors: the guard checks in determineCanSkipTick still run, matching the set-based path.
+        if (firstBreadKB == null && likelyKB == null) {
+            kbPointThree = pointThreeEstimator.determineCanSkipTick(BlockProperties.getFrictionInfluencedSpeed((float) (speed * (isSprinting ? 1.3 : 1)), this));
+            checkManager.getKnockbackHandler().setPointThree(kbPointThree);
+        } else if (firstBreadKB == null || likelyKB == null) {
+            // Exactly one vector: use the allocation-free single-vector overload.
+            VectorData vector = firstBreadKB != null
+                    ? new VectorData(firstBreadKB.vector, VectorData.VectorType.Knockback)
+                    : new VectorData(likelyKB.vector, VectorData.VectorType.Knockback);
+            kbPointThree = pointThreeEstimator.determineCanSkipTick(BlockProperties.getFrictionInfluencedSpeed((float) (speed * (isSprinting ? 1.3 : 1)), this), vector);
+            checkManager.getKnockbackHandler().setPointThree(kbPointThree);
+        } else {
+            Set<VectorData> knockback = new HashSet<>(2);
+            knockback.add(new VectorData(firstBreadKB.vector, VectorData.VectorType.Knockback));
+            knockback.add(new VectorData(likelyKB.vector, VectorData.VectorType.Knockback));
 
-        boolean kbPointThree = pointThreeEstimator.determineCanSkipTick(BlockProperties.getFrictionInfluencedSpeed((float) (speed * (isSprinting ? 1.3 : 1)), this), knockback);
-        checkManager.getKnockbackHandler().setPointThree(kbPointThree);
+            kbPointThree = pointThreeEstimator.determineCanSkipTick(BlockProperties.getFrictionInfluencedSpeed((float) (speed * (isSprinting ? 1.3 : 1)), this), knockback);
+            checkManager.getKnockbackHandler().setPointThree(kbPointThree);
+        }
 
-        Set<VectorData> explosion = new HashSet<>();
-        if (firstBreadExplosion != null)
+        boolean explosionPointThree;
+        if (firstBreadExplosion == null && likelyExplosions == null) {
+            explosionPointThree = pointThreeEstimator.determineCanSkipTick(BlockProperties.getFrictionInfluencedSpeed((float) (speed * (isSprinting ? 1.3 : 1)), this));
+            checkManager.getExplosionHandler().setPointThree(explosionPointThree);
+        } else if (firstBreadExplosion == null || likelyExplosions == null) {
+            VectorData vector = firstBreadExplosion != null
+                    ? new VectorData(firstBreadExplosion.vector, VectorData.VectorType.Explosion)
+                    : new VectorData(likelyExplosions.vector, VectorData.VectorType.Explosion);
+            explosionPointThree = pointThreeEstimator.determineCanSkipTick(BlockProperties.getFrictionInfluencedSpeed((float) (speed * (isSprinting ? 1.3 : 1)), this), vector);
+            checkManager.getExplosionHandler().setPointThree(explosionPointThree);
+        } else {
+            Set<VectorData> explosion = new HashSet<>(2);
             explosion.add(new VectorData(firstBreadExplosion.vector, VectorData.VectorType.Explosion));
-        if (likelyExplosions != null)
             explosion.add(new VectorData(likelyExplosions.vector, VectorData.VectorType.Explosion));
 
-        boolean explosionPointThree = pointThreeEstimator.determineCanSkipTick(BlockProperties.getFrictionInfluencedSpeed((float) (speed * (isSprinting ? 1.3 : 1)), this), explosion);
-        checkManager.getExplosionHandler().setPointThree(explosionPointThree);
+            explosionPointThree = pointThreeEstimator.determineCanSkipTick(BlockProperties.getFrictionInfluencedSpeed((float) (speed * (isSprinting ? 1.3 : 1)), this), explosion);
+            checkManager.getExplosionHandler().setPointThree(explosionPointThree);
+        }
 
         if (kbPointThree || explosionPointThree) {
             uncertaintyHandler.lastPointThree.reset();

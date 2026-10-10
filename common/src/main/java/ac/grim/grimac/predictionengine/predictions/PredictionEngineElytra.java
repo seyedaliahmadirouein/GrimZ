@@ -15,6 +15,9 @@ import java.util.List;
 import java.util.Set;
 
 public class PredictionEngineElytra extends PredictionEngine {
+    // Stateless engine; shared instance avoids per-tick allocation.
+    public static final PredictionEngineElytra INSTANCE = new PredictionEngineElytra();
+
     public static Vector3dm getElytraMovement(GrimPlayer player, Vector3dm vector, Vector3dm lookVector) {
         float pitchRadians = GrimMath.radians(player.pitch);
         double horizontalSqrt = Math.sqrt(lookVector.getX() * lookVector.getX() + lookVector.getZ() * lookVector.getZ());

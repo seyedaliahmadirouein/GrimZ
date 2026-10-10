@@ -87,6 +87,9 @@ import java.util.Set;
  * increase bandwidth usage.  At least it only causes falses occasionally, and not bypasses.
  */
 public class PointThreeEstimator {
+    // PredictionEngine is stateless, so a single shared instance avoids allocating one
+    // per candidate vector per tick in evaluateSkipTickLength.
+    private static final PredictionEngine PREDICTION_ENGINE = new PredictionEngine();
     private final GrimPlayer player;
     // If the player was within 0.03 of water between now and the last movement
     public boolean isNearFluid = false;
@@ -367,24 +370,7 @@ public class PointThreeEstimator {
 
         // Takes 0.01 millis, on average, to compute... this should be improved eventually
         for (VectorData data : init) {
-            // Try to get the vector as close to zero as possible to give the best chance at 0.03...
-            Vector3dm toZeroVec = new PredictionEngine().handleStartingVelocityUncertainty(player, data, new Vector3dm());
-            // Collide to handle mostly gravity, but other scenarios similar to this.
-            Vector3dm collisionResult = Collisions.collide(player, toZeroVec.getX(), toZeroVec.getY(), toZeroVec.getZ(), Integer.MIN_VALUE, null);
-
-            // If this tick is the tick after y velocity was by 0, a stepping movement is POSSIBLE to have been hidden
-            // A bit hacky... is there a better way?  I'm unsure...
-            boolean likelyStepSkip = player.isPointThree() && (data.vector.getY() > -0.08 && data.vector.getY() < 0.06) && couldStep;
-
-            // We need to do hypot calculations for all 3 axis
-            // sqrt(sqrt(x^2 + z^2)^2 + y^2) = hypot(x, z, y)
-            double minHorizLength = Math.max(0, Math.hypot(collisionResult.getX(), collisionResult.getZ()) - speed);
-            // Detection > 100% falseless for explosions and knockback... disappearing blocks below player is rare
-            // plus we should be able to detect 0.03 with the other vectors anyways
-            boolean forcedNo003 = data.isExplosion() || data.isKnockback();
-            // If the player was last on the ground, then let's consider them to have not moved vertically
-            // The world could have changed since the last tick causing a false
-            double length = Math.hypot((!forcedNo003 && player.lastOnGround) || (likelyStepSkip || controlsVerticalMovement()) ? 0 : Math.abs(collisionResult.getY()), minHorizLength);
+            double length = evaluateSkipTickLength(data, speed, couldStep);
 
             minimum = Math.min(minimum, length);
 
@@ -393,6 +379,95 @@ public class PointThreeEstimator {
 
         // As long as we are mathematically correct here, this should be perfectly accurate
         return minimum < player.getMovementThreshold();
+    }
+
+    /**
+     * Zero-vector variant matching the set-based path invoked with an empty set:
+     * the same guard conditions run, then the loop contributes nothing and the
+     * result is {@code Double.MAX_VALUE < movementThreshold}, which is always false.
+     */
+    public boolean determineCanSkipTick(float speed) {
+        // If possible, check for idle packet
+        if (!player.canSkipTicks() && player.packetStateData.didLastMovementIncludePosition && !player.uncertaintyHandler.isSteppingOnSlime) {
+            return false; // Last packet included a position so not 0.03
+        }
+
+        if ((player.isGliding || player.wasGliding) && !player.packetStateData.didLastMovementIncludePosition) {
+            return true;
+        }
+
+        // Thankfully vehicles don't have 0.03
+        if (player.inVehicle()) {
+            return false;
+        }
+
+        if (isNearClimbable() || isPushing || player.fireworks.getMaxFireworksAppliedPossible() > 0) {
+            return true;
+        }
+
+        // The set-based path evaluates couldStep (checkForGround) even for an empty set;
+        // Collisions.collide has side effects (e.g. uncertaintyHandler.isStepMovement),
+        // so it must run here too for exact equivalence.
+        if (player.isPointThree()) {
+            checkForGround(player.clientVelocity.getY());
+        }
+
+        return false;
+    }
+
+    /**
+     * Single-vector variant of {@link #determineCanSkipTick(float, Set)} that avoids
+     * allocating a wrapper collection for the very common case of one candidate vector.
+     * Applies the exact same guard conditions and per-vector evaluation.
+     */
+    public boolean determineCanSkipTick(float speed, VectorData data) {
+        // If possible, check for idle packet
+        if (!player.canSkipTicks() && player.packetStateData.didLastMovementIncludePosition && !player.uncertaintyHandler.isSteppingOnSlime) {
+            return false; // Last packet included a position so not 0.03
+        }
+
+        if ((player.isGliding || player.wasGliding) && !player.packetStateData.didLastMovementIncludePosition) {
+            return true;
+        }
+
+        // Thankfully vehicles don't have 0.03
+        if (player.inVehicle()) {
+            return false;
+        }
+
+        if (isNearClimbable() || isPushing || player.fireworks.getMaxFireworksAppliedPossible() > 0) {
+            return true;
+        }
+
+        boolean couldStep = player.isPointThree() && checkForGround(player.clientVelocity.getY());
+
+        // As long as we are mathematically correct here, this should be perfectly accurate
+        return evaluateSkipTickLength(data, speed, couldStep) < player.getMovementThreshold();
+    }
+
+    /**
+     * Body of the per-vector loop in {@link #determineCanSkipTick(float, Set)}, extracted
+     * verbatim so both the set-based and single-vector variants share identical logic.
+     */
+    private double evaluateSkipTickLength(VectorData data, float speed, boolean couldStep) {
+        // Try to get the vector as close to zero as possible to give the best chance at 0.03...
+        Vector3dm toZeroVec = PREDICTION_ENGINE.handleStartingVelocityUncertainty(player, data, new Vector3dm());
+        // Collide to handle mostly gravity, but other scenarios similar to this.
+        Vector3dm collisionResult = Collisions.collide(player, toZeroVec.getX(), toZeroVec.getY(), toZeroVec.getZ(), Integer.MIN_VALUE, null);
+
+        // If this tick is the tick after y velocity was by 0, a stepping movement is POSSIBLE to have been hidden
+        // A bit hacky... is there a better way?  I'm unsure...
+        boolean likelyStepSkip = player.isPointThree() && (data.vector.getY() > -0.08 && data.vector.getY() < 0.06) && couldStep;
+
+        // We need to do hypot calculations for all 3 axis
+        // sqrt(sqrt(x^2 + z^2)^2 + y^2) = hypot(x, z, y)
+        double minHorizLength = Math.max(0, Math.hypot(collisionResult.getX(), collisionResult.getZ()) - speed);
+        // Detection > 100% falseless for explosions and knockback... disappearing blocks below player is rare
+        // plus we should be able to detect 0.03 with the other vectors anyways
+        boolean forcedNo003 = data.isExplosion() || data.isKnockback();
+        // If the player was last on the ground, then let's consider them to have not moved vertically
+        // The world could have changed since the last tick causing a false
+        return Math.hypot((!forcedNo003 && player.lastOnGround) || (likelyStepSkip || controlsVerticalMovement()) ? 0 : Math.abs(collisionResult.getY()), minHorizLength);
     }
 
     public double getHorizontalFluidPushingUncertainty(VectorData vector) {

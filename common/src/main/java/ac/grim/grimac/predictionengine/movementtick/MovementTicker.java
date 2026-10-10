@@ -109,7 +109,7 @@ public class MovementTicker {
             return isHorizontalCollisionSoft(collide, horizontalLengthSquared, sin, cos, (float) input.getX(), (float) input.getZ());
         } else { // elytra
             ArrayList<VectorData> results = new ArrayList<>();
-            new PredictionEngine().loopVectors(
+            PredictionEngine.INSTANCE.loopVectors(
                     player,
                     Set.of(new VectorData(new Vector3dm(), VectorData.VectorType.Normal)),
                     0,
@@ -520,7 +520,7 @@ public class MovementTicker {
                         player.fallDistance = 1;
                     }
 
-                    new PredictionEngineElytra().guessBestMovement(0, player);
+                    PredictionEngineElytra.INSTANCE.guessBestMovement(0, player);
                 }
             } else {
                 float blockFriction = BlockProperties.getFriction(player, player.mainSupportingBlockData, new Vector3d(player.lastX, player.lastY, player.lastZ));

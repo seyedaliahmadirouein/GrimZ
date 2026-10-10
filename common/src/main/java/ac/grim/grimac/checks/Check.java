@@ -120,6 +120,11 @@ public class Check extends GrimProcessor implements AbstractCheck {
     }
 
     public final boolean flag(@NotNull Verbose.Writer verbose) {
+        // Same conditions as recordFlag(BinaryVerbose): skip the verbose serialization
+        // (writer.end().toByteArray()) entirely when the flag cannot be recorded anyway.
+        if (player.disableGrim || (experimental && !player.isExperimentalChecks()) || exemptPermission)
+            return false; // Avoid calling event if disabled
+
         BinaryVerbose binary = lazyVerbose(verbose);
         if (recordFlag(binary)) {
             alert(binary.rendered());
@@ -129,6 +134,11 @@ public class Check extends GrimProcessor implements AbstractCheck {
     }
 
     public final boolean flag(@NotNull Verbose.Writer verbose, @NotNull Supplier<String> alertText) {
+        // Same conditions as recordFlag(BinaryVerbose): skip the verbose serialization
+        // entirely when the flag cannot be recorded anyway.
+        if (player.disableGrim || (experimental && !player.isExperimentalChecks()) || exemptPermission)
+            return false; // Avoid calling event if disabled
+
         BinaryVerbose binary = lazyVerbose(verbose);
         if (recordFlag(binary)) {
             alert(memoize(Objects.requireNonNull(alertText, "alertText")));

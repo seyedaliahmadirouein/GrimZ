@@ -29,6 +29,8 @@ import java.util.Objects;
 import java.util.Set;
 
 public class PredictionEngine {
+    // This class is stateless; a shared instance avoids per-vector allocations in hot paths.
+    public static final PredictionEngine INSTANCE = new PredictionEngine();
 
     public static Vector3dm clampMovementToHardBorder(GrimPlayer player, Vector3dm outputVel) {
         // TODO: Reimplement
@@ -41,7 +43,7 @@ public class PredictionEngine {
         if (player.uncertaintyHandler.influencedByBouncyBlock()) {
             for (VectorData data : init) {
                 // Try to get the vector as close to zero as possible to give the best chance at 0.03...
-                Vector3dm toZeroVec = new PredictionEngine().handleStartingVelocityUncertainty(player, data, new Vector3dm(0, -1000000000, 0)); // Downwards without overflow risk
+                Vector3dm toZeroVec = INSTANCE.handleStartingVelocityUncertainty(player, data, new Vector3dm(0, -1000000000, 0)); // Downwards without overflow risk
 
                 player.uncertaintyHandler.nextTickSlimeBlockUncertainty = Math.max(Math.abs(toZeroVec.getY()), player.uncertaintyHandler.nextTickSlimeBlockUncertainty);
             }
@@ -139,7 +141,7 @@ public class PredictionEngine {
             //
             // Exempt if the player
             if ((clientVelAfterInput.isKnockback() || clientVelAfterInput.isExplosion()) && !clientVelAfterInput.isZeroPointZeroThree()) {
-                boolean wasVelocityPointThree = player.pointThreeEstimator.determineCanSkipTick(speed, new HashSet<>(Collections.singletonList(clientVelAfterInput)));
+                boolean wasVelocityPointThree = player.pointThreeEstimator.determineCanSkipTick(speed, clientVelAfterInput);
 
                 if (clientVelAfterInput.isKnockback()) {
                     player.checkManager.getKnockbackHandler().setPointThree(wasVelocityPointThree);

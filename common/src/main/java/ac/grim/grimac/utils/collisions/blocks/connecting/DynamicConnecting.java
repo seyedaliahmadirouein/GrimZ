@@ -51,8 +51,15 @@ public class DynamicConnecting {
     }
 
     public boolean connectsTo(GrimPlayer player, ClientVersion v, int currX, int currY, int currZ, BlockFace direction) {
-        WrappedBlockState targetBlock = player.compensatedWorld.getBlock(currX + direction.getModX(), currY + direction.getModY(), currZ + direction.getModZ());
-        WrappedBlockState currBlock = player.compensatedWorld.getBlock(currX, currY, currZ);
+        return connectsTo(player, v, currX, currY, currZ, direction, player.compensatedWorld.getBlock(currX, currY, currZ, false));
+    }
+
+    // Overload letting callers that already hold the state at (currX, currY, currZ) skip the
+    // redundant world lookup: connectsTo is called 4-5 times per fence/wall/pane block per scan.
+    // The passed state is only read (getType/getFacing), never mutated.
+    public boolean connectsTo(GrimPlayer player, ClientVersion v, int currX, int currY, int currZ, BlockFace direction, WrappedBlockState currBlock) {
+        // Read-only use: only getType()/getFacing() are called on both states.
+        WrappedBlockState targetBlock = player.compensatedWorld.getBlock(currX + direction.getModX(), currY + direction.getModY(), currZ + direction.getModZ(), false);
         StateType target = targetBlock.getType();
         StateType fence = currBlock.getType();
 

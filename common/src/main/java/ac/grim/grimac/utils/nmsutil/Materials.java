@@ -20,6 +20,10 @@ import java.util.stream.Collectors;
 
 @UtilityClass
 public class Materials {
+    // Server version is fixed for the lifetime of the JVM; hoisting avoids a static
+    // getter chain (PacketEvents.getAPI()...) per call in per-block hot paths.
+    private static final boolean SERVER_IS_PRE_1_13 = PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_13);
+
     private static final Set<StateType> NO_PLACE_LIQUIDS = Collections.newSetFromMap(new IdentityHashMap<>());
     // Includes iron panes in addition to glass panes
     private static final Set<StateType> PANES = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -254,8 +258,7 @@ public class Materials {
 
     public static boolean isWaterlogged(ClientVersion clientVersion, WrappedBlockState state) {
         if (clientVersion.isOlderThanOrEquals(ClientVersion.V_1_12_2)) return false;
-        if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_13))
-            return false;
+        if (SERVER_IS_PRE_1_13) return false;
 
         StateType type = state.getType();
 

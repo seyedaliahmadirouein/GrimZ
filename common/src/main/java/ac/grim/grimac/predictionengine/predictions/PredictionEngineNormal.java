@@ -21,6 +21,9 @@ import java.util.Set;
 
 public class PredictionEngineNormal extends PredictionEngine {
 
+    // Stateless engine; shared instance avoids per-tick allocation.
+    public static final PredictionEngineNormal INSTANCE = new PredictionEngineNormal();
+
     public static void staticVectorEndOfTick(GrimPlayer player, Vector3dm vector) {
         double adjustedY = vector.getY();
         final OptionalInt levitation = player.compensatedEntities.getPotionLevelForPlayer(PotionTypes.LEVITATION);

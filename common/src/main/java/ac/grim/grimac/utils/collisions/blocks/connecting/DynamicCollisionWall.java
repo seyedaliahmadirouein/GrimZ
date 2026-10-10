@@ -49,10 +49,11 @@ public class DynamicCollisionWall extends DynamicConnecting implements Collision
             if (state.isUp())
                 up = 1;
         } else {
-            north = connectsTo(player, version, x, y, z, BlockFace.NORTH) ? 1 : 0;
-            south = connectsTo(player, version, x, y, z, BlockFace.SOUTH) ? 1 : 0;
-            west = connectsTo(player, version, x, y, z, BlockFace.WEST) ? 1 : 0;
-            east = connectsTo(player, version, x, y, z, BlockFace.EAST) ? 1 : 0;
+            WrappedBlockState currBlock = player.compensatedWorld.getBlock(x, y, z, false);
+            north = connectsTo(player, version, x, y, z, BlockFace.NORTH, currBlock) ? 1 : 0;
+            south = connectsTo(player, version, x, y, z, BlockFace.SOUTH, currBlock) ? 1 : 0;
+            west = connectsTo(player, version, x, y, z, BlockFace.WEST, currBlock) ? 1 : 0;
+            east = connectsTo(player, version, x, y, z, BlockFace.EAST, currBlock) ? 1 : 0;
             up = 1;
         }
 
@@ -143,23 +144,24 @@ public class DynamicCollisionWall extends DynamicConnecting implements Collision
         }
 
         // Handle connections for old server or old client
-        boolean north = isNewServer ? block.getNorth() != North.NONE : connectsTo(player, version, x, y, z, BlockFace.NORTH);
-        boolean south = isNewServer ? block.getSouth() != South.NONE : connectsTo(player, version, x, y, z, BlockFace.SOUTH);
-        boolean west = isNewServer ? block.getWest() != West.NONE : connectsTo(player, version, x, y, z, BlockFace.WEST);
-        boolean east = isNewServer ? block.getEast() != East.NONE : connectsTo(player, version, x, y, z, BlockFace.EAST);
+        // The conditional fetch keeps the modern fast path allocation-free.
+        WrappedBlockState currBlock = isNewServer ? null : player.compensatedWorld.getBlock(x, y, z, false);
+        boolean north = isNewServer ? block.getNorth() != North.NONE : connectsTo(player, version, x, y, z, BlockFace.NORTH, currBlock);
+        boolean south = isNewServer ? block.getSouth() != South.NONE : connectsTo(player, version, x, y, z, BlockFace.SOUTH, currBlock);
+        boolean west = isNewServer ? block.getWest() != West.NONE : connectsTo(player, version, x, y, z, BlockFace.WEST, currBlock);
+        boolean east = isNewServer ? block.getEast() != East.NONE : connectsTo(player, version, x, y, z, BlockFace.EAST, currBlock);
 
         // Only calculate up for new client on old server
         if (!isNewServer && isNewClient) {
-            boolean up = connectsTo(player, version, x, y, z, BlockFace.UP);
+            boolean up = connectsTo(player, version, x, y, z, BlockFace.UP, currBlock);
 
             if (!up) {
-                WrappedBlockState currBlock = player.compensatedWorld.getBlock(x, y, z);
                 StateType currType = currBlock.getType();
 
-                boolean selfNorth = currType == player.compensatedWorld.getBlock(x, y, z + 1).getType();
-                boolean selfSouth = currType == player.compensatedWorld.getBlock(x, y, z - 1).getType();
-                boolean selfWest = currType == player.compensatedWorld.getBlock(x - 1, y, z).getType();
-                boolean selfEast = currType == player.compensatedWorld.getBlock(x + 1, y, z).getType();
+                boolean selfNorth = currType == player.compensatedWorld.getBlock(x, y, z + 1, false).getType();
+                boolean selfSouth = currType == player.compensatedWorld.getBlock(x, y, z - 1, false).getType();
+                boolean selfWest = currType == player.compensatedWorld.getBlock(x - 1, y, z, false).getType();
+                boolean selfEast = currType == player.compensatedWorld.getBlock(x + 1, y, z, false).getType();
 
                 up = (!selfNorth || !selfSouth || selfWest || selfEast) &&
                         (!selfWest || !selfEast || selfNorth || selfSouth);

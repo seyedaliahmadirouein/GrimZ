@@ -454,6 +454,15 @@ public class CompensatedWorld implements PacketWorld {
     }
 
     public WrappedBlockState getBlock(int x, int y, int z) {
+        return getBlock(x, y, z, true);
+    }
+
+    // Clone semantics: with clone=true the returned state is a private copy safe to mutate.
+    // With clone=false the shared cached state is returned, which is ONLY safe for read-only
+    // use (the same invariant as the existing clone=false section.get(...) calls in
+    // Collisions' scan loops).  PacketEvents setters are copy-on-write, but the write-back
+    // would still corrupt the shared cache, so mutating callers must keep clone=true.
+    public WrappedBlockState getBlock(int x, int y, int z, boolean clone) {
         if (noNegativeBlocks && y < 0) return airData;
 
         try {
@@ -464,7 +473,7 @@ public class CompensatedWorld implements PacketWorld {
 
             BaseChunk chunk = column.chunks()[y >> 4];
             if (chunk != null) {
-                return chunk.get(blockVersion, x & 0xF, y & 0xF, z & 0xF);
+                return chunk.get(blockVersion, x & 0xF, y & 0xF, z & 0xF, clone);
             }
         } catch (Exception ignored) {
         }
@@ -665,7 +674,7 @@ public class CompensatedWorld implements PacketWorld {
     }
 
     public StateType getBlockType(double x, double y, double z) {
-        return getBlock((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z)).getType();
+        return getBlock((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z), false).getType();
     }
 
     public WrappedBlockState getBlock(double x, double y, double z) {
@@ -677,7 +686,7 @@ public class CompensatedWorld implements PacketWorld {
     }
 
     public boolean isWaterSourceBlock(int x, int y, int z) {
-        WrappedBlockState bukkitBlock = getBlock(x, y, z);
+        WrappedBlockState bukkitBlock = getBlock(x, y, z, false);
         return Materials.isWaterSource(player.getClientVersion(), bukkitBlock);
     }
 
@@ -686,10 +695,13 @@ public class CompensatedWorld implements PacketWorld {
     }
 
     public float getLavaFluidLevelAt(int x, int y, int z) {
-        WrappedBlockState magicBlockState = getBlock(x, y, z);
-        WrappedBlockState magicBlockStateAbove = getBlock(x, y + 1, z);
+        WrappedBlockState magicBlockState = getBlock(x, y, z, false);
 
         if (magicBlockState.getType() != StateTypes.LAVA) return 0f;
+
+        // Fetch the block above only after the lava early-out (pure reads, same result,
+        // but avoids a state clone for every non-lava block in the lava scan).
+        WrappedBlockState magicBlockStateAbove = getBlock(x, y + 1, z, false);
         if (magicBlockStateAbove.getType() == StateTypes.LAVA) return 1f;
 
         int level = magicBlockState.getLevel();
@@ -712,13 +724,13 @@ public class CompensatedWorld implements PacketWorld {
     }
 
     public float getWaterFluidLevelAt(int x, int y, int z) {
-        WrappedBlockState wrappedBlock = getBlock(x, y, z);
+        WrappedBlockState wrappedBlock = getBlock(x, y, z, false);
         boolean isWater = Materials.isWater(player.getClientVersion(), wrappedBlock);
 
         if (!isWater) return 0f;
 
         // If water has water above it, it's block height is 1, even if it's waterlogged
-        if (Materials.isWater(player.getClientVersion(), getBlock(x, y + 1, z))) {
+        if (Materials.isWater(player.getClientVersion(), getBlock(x, y + 1, z, false))) {
             return 1f;
         }
 

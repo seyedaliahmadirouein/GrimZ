@@ -77,7 +77,27 @@ public class VectorData {
 
     @Override
     public int hashCode() {
-        return Objects.hash(vectorType, lastVector, preUncertainty, vector, stuckSpeedMultiplier, isKnockback, firstBreadKb, isExplosion, firstBreadExplosion, isTrident, isZeroPointZeroThree, isSwimHop, isFlipSneaking, isFlipItem, isJump, isAttackSlow);
+        // Identical to Objects.hash(...) but without allocating a 16-slot Object[]
+        // and without boxing the booleans on every call (this is a per-HashSet-op hot path).
+        // Objects.hash delegates to Arrays.hashCode(Object[]), which starts at 1.
+        int result = 1;
+        result = 31 * result + (vectorType != null ? vectorType.hashCode() : 0);
+        result = 31 * result + (lastVector != null ? lastVector.hashCode() : 0);
+        result = 31 * result + (preUncertainty != null ? preUncertainty.hashCode() : 0);
+        result = 31 * result + (vector != null ? vector.hashCode() : 0);
+        result = 31 * result + (stuckSpeedMultiplier != null ? stuckSpeedMultiplier.hashCode() : 0);
+        result = 31 * result + (isKnockback ? 1231 : 1237);
+        result = 31 * result + (firstBreadKb ? 1231 : 1237);
+        result = 31 * result + (isExplosion ? 1231 : 1237);
+        result = 31 * result + (firstBreadExplosion ? 1231 : 1237);
+        result = 31 * result + (isTrident ? 1231 : 1237);
+        result = 31 * result + (isZeroPointZeroThree ? 1231 : 1237);
+        result = 31 * result + (isSwimHop ? 1231 : 1237);
+        result = 31 * result + (isFlipSneaking ? 1231 : 1237);
+        result = 31 * result + (isFlipItem ? 1231 : 1237);
+        result = 31 * result + (isJump ? 1231 : 1237);
+        result = 31 * result + (isAttackSlow ? 1231 : 1237);
+        return result;
     }
 
     public void addVectorType(VectorType type) {

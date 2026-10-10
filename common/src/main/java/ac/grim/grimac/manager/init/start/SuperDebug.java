@@ -237,7 +237,7 @@ public final class SuperDebug extends GrimProcessor implements PostPredictionLis
 
         // Apply 0.003/0.005 to make numbers more accurate
         Set<VectorData> set = new HashSet<>(Collections.singletonList(new VectorData(startTick.clone(), VectorData.VectorType.BestVelPicked)));
-        new PredictionEngine().applyMovementThreshold(player, set);
+        PredictionEngine.INSTANCE.applyMovementThreshold(player, set);
         Vector3dm trueStartVel = ((VectorData) set.toArray()[0]).vector;
 
         Vector3dm clientMovement = getPlayerMathMovement(player, actual.clone().subtract(trueStartVel), location.xRot);

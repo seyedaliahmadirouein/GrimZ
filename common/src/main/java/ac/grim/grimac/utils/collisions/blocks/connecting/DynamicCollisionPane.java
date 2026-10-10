@@ -38,10 +38,11 @@ public class DynamicCollisionPane extends DynamicConnecting implements Collision
             south = block.getSouth() != South.FALSE;
             west = block.getWest() != West.FALSE;
         } else {
-            east = connectsTo(player, version, x, y, z, BlockFace.EAST);
-            north = connectsTo(player, version, x, y, z, BlockFace.NORTH);
-            south = connectsTo(player, version, x, y, z, BlockFace.SOUTH);
-            west = connectsTo(player, version, x, y, z, BlockFace.WEST);
+            WrappedBlockState currBlock = player.compensatedWorld.getBlock(x, y, z, false);
+            east = connectsTo(player, version, x, y, z, BlockFace.EAST, currBlock);
+            north = connectsTo(player, version, x, y, z, BlockFace.NORTH, currBlock);
+            south = connectsTo(player, version, x, y, z, BlockFace.SOUTH, currBlock);
+            west = connectsTo(player, version, x, y, z, BlockFace.WEST, currBlock);
         }
 
         // On 1.7 and 1.8 clients, and 1.13+ clients on 1.7 and 1.8 servers, the glass pane is + instead of |

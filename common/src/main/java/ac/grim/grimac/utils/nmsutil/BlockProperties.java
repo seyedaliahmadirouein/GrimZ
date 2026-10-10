@@ -114,7 +114,8 @@ public class BlockProperties {
             return getBlockSpeedFactorLegacy(player, playerPos);
         }
 
-        WrappedBlockState inBlock = player.compensatedWorld.getBlock(playerPos.getX(), playerPos.getY(), playerPos.getZ());
+        // Read-only use: only getType() is called on this state.
+        WrappedBlockState inBlock = player.compensatedWorld.getBlock((int) Math.floor(playerPos.getX()), (int) Math.floor(playerPos.getY()), (int) Math.floor(playerPos.getZ()), false);
         float inBlockSpeedFactor = getBlockSpeedFactor(player, inBlock.getType());
         if (inBlockSpeedFactor != 1.0f || inBlock.getType() == StateTypes.WATER || inBlock.getType() == StateTypes.BUBBLE_COLUMN) {
             return getModernVelocityMultiplier(player, inBlockSpeedFactor);
